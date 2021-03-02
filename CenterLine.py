@@ -1,59 +1,74 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 26 12:19:51 2021
+import sys
+sys.path.append(r'C:\Program Files\QGIS 3.18\apps\qgis\python\plugins')
 
-@author: jrutyna
-"""
 
 from qgis.core import (
+    QgsProcessing,
     QgsVectorLayer,
     QgsGeometry,
     QgsProject,
     QgsFeatureRequest,
     QgsDistanceArea,
     QgsApplication,
-    #processing#
     )
 
 
-#from qgis.core import *
-
-# Supply path to qgis install location
-#QgsApplication.setPrefixPath("C:/PROGRA~1/QGIS3~1.18/apps/qgis", True)
-QgsApplication.setPrefixPath(r"C:/Program Files/QGIS 3.18/apps/qgis", True)
-
-# Create a reference to the QgsApplication.  Setting the
-# second argument to False disables the GUI.
+#make sure to update pathway for you're QGIS installation
+QgsApplication.setPrefixPath(r"C:\Program Files\QGIS 3.18\apps\qgis", True)
 qgs = QgsApplication([], False)
-
-# Load providers
 qgs.initQgis()
 
-# Write your code here to load some layers, use processing
-# algorithms, etc.
+from processing.core.Processing import Processing
+Processing.initialize()
 
-#import sys
-#sys.path.append("C:/Program Files/QGIS 3.18/apps/qgis/python/plugins/processing")
+from qgis.analysis import QgsNativeAlgorithms
+qgs.processingRegistry().addProvider(QgsNativeAlgorithms())
 
-#import processing
-#from processing.core.Processing import Processing
-
-#Processing.initialize()
-#Processing.updateAlgsList()
-
-pth_CL = "I:/2ERDC02 – WQ Model Enhancements FY2021/GIS/Data/LimnoTech/NapaRiver_CL.shp"
-
-lyr_CL = QgsVectorLayer(pth_CL, "Name", "Length")
-
-
+print('total algorithms found:', len(qgs.processingRegistry().algorithms()))
+for alg in qgs.processingRegistry().algorithms():
+    print(alg.id(), "->", alg.displayName())
 
 from qgis import processing
 
-lyr_CL_pts = processing.run("qgis:pointsalonglines", {lyr_CL, 2000, 0, 0})
+processing.algorithmHelp('native:pointsalonglines')
+
+wrkDir = R"I:\2ERDC02 – WQ Model Enhancements FY2021\GIS\Data\LimnoTech"
+
+pth_CL = wrkDir + R"\NapaRiver_CL.shp"
+pth_OUT = wrkDir + R"\TEMP_CL_pts.shp"
+lyr_CL_pts = processing.run("native:pointsalonglines", {'INPUT':pth_CL, 'DISTANCE':2000, 'START_OFFSET':0, 'END_OFFSET':0, 'OUTPUT':pth_OUT})
+print("Finished - Centerline Points")
+
+
+pth_CL_pts = wrkDir + R"\TEMP_CL_pts.shp"
+pth_OUT = wrkDir + R"\TEMP_CL_pts_Path.shp"
+lyr_CL_pts = processing.run("qgis:pointstopath", {'INPUT':pth_CL_pts, 'ORDER_FIELD':"distance", 'OUTPUT':pth_OUT})
+print("Finished - Centerline Points Path")
+
+
+pth_CL_pts_Path = wrkDir + R"\TEMP_CL_pts_Path.shp"
+pth_OUT = wrkDir + R"\TEMP_CL_trnsct.shp"
+lyr_CL_pts = processing.run("native:transect", {'INPUT':pth_CL_pts_Path, 'LENGTH':500, 'ANGLE':90, 'SIDE':2, 'OUTPUT':pth_OUT})
+print("Finished - Centerline Transect")
+
+
+pth_CL_pts = wrkDir + R"\TEMP_CL_pts.shp"
+pth_OUT = wrkDir + R"\TEMP_CL_pts_Buff.shp"
+lyr_CL_pts = processing.run("native:buffer", {'INPUT':pth_CL_pts, 'DISTANCE':0.05, 'OUTPUT':pth_OUT})
+print("Finished - Buffer Centerline Points")
+
+
+pth_OUT = wrkDir + R"\TEMP_CL_sgmts.shp"
+lyr_CL_sgmts = processing.run("native:explodelines", {'INPUT':pth_CL, 'OUTPUT':pth_OUT})
+print("Finished - Centerline Segments")
+
+
+pth_CL_sgmts = pth_OUT = wrkDir + R"\TEMP_CL_sgmts.shp"
+pth_CL_pts_Buff = wrkDir + R"\TEMP_CL_pts_Buff.shp"
+pth_OUT = wrkDir + R"\TEMP_CL_sgmts_slctd.shp"
+lyr_CL_sgmts_slctd = processing.run("native:joinattributesbylocation", {'INPUT':pth_CL_sgmts, 'JOIN': pth_CL_pts_Buff, 'PREDICATE': 0, 'METHOD': 0, 'DISCARD_NONMATCHING': True, 'OUTPUT':pth_OUT})
+print("Finished - Centerline Segments Selected")
 
 
 
-
-# Finally, exitQgis() is called to remove the
-# provider and layer registries from memory
 qgs.exitQgis()
