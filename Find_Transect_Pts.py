@@ -7,7 +7,7 @@ Created on Wed Mar  3 12:39:13 2021
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Point, LineString, shape
+from shapely.geometry import Point, LineString, Polygon, shape
 
 
 #Number of CE-QUAL-W2 Segments (USER INPUT)
@@ -256,6 +256,73 @@ geo_df_transect_lines = gpd.GeoDataFrame(geo_df_transect_lines, geometry='geomet
 #Export transect lines shape file
 pth_transectLines = wrkDir + R"\TEMP_CL_Transect_Lines.shp"
 geo_df_transect_lines.to_file(pth_transectLines)
+
+
+###### Some polygons are not being drawn correctly...needs work...JMR 3/9/2021 ######
+#Create and populate CE-QUAL-W2 polygons point arrays
+n = 1 #starting for loop at second record of the "CLpts_W2seg_Pts#2_***" arrays to facilitate calling previous transect points
+CLpts_W2segPlygn_shape = (Seg_No, 1)
+W2seg_Plygn_Pt1_X = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt2_X = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt3_X = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt4_X = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt1_Y = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt2_Y = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt3_Y = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_Pt4_Y = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_CLdist = np.zeros((CLpts_W2segPlygn_shape))
+W2seg_Plygn_ID = np.zeros((CLpts_W2segPlygn_shape))
+
+for row in W2seg_Plygn_Pt1_X:
+    Pt1_X = CLpts_W2seg_PtX2_neg[n]
+    Pt1_Y = CLpts_W2seg_PtY2_neg[n]
+    Pt2_X = CLpts_W2seg_PtX2_pos[n]
+    Pt2_Y = CLpts_W2seg_PtY2_pos[n]
+    Pt3_X = CLpts_W2seg_PtX2_pos[n - 1]
+    Pt3_Y = CLpts_W2seg_PtY2_pos[n - 1]
+    Pt4_X = CLpts_W2seg_PtX2_neg[n - 1]
+    Pt4_Y = CLpts_W2seg_PtY2_neg[n - 1]
+    CLdist = CLpts_W2seg_Dist[n]
+    Plygn_ID = n
+    np.put(W2seg_Plygn_Pt1_X , [n - 1], [Pt1_X])
+    np.put(W2seg_Plygn_Pt2_X , [n - 1], [Pt2_X])
+    np.put(W2seg_Plygn_Pt3_X , [n - 1], [Pt3_X])
+    np.put(W2seg_Plygn_Pt4_X , [n - 1], [Pt4_X])
+    np.put(W2seg_Plygn_Pt1_Y , [n - 1], [Pt1_Y])
+    np.put(W2seg_Plygn_Pt2_Y , [n - 1], [Pt2_Y])
+    np.put(W2seg_Plygn_Pt3_Y , [n - 1], [Pt3_Y])
+    np.put(W2seg_Plygn_Pt4_Y , [n - 1], [Pt4_Y])
+    np.put(W2seg_Plygn_CLdist , [n - 1], [CLdist])
+    np.put(W2seg_Plygn_ID , [n - 1], [Plygn_ID])
+    n = n + 1
+
+    
+
+#Assemble polygon points for use in pandas
+Polygon_Pts_A = np.column_stack((W2seg_Plygn_ID, W2seg_Plygn_CLdist, W2seg_Plygn_Pt1_X, W2seg_Plygn_Pt1_Y))
+Polygon_Pts_B = np.column_stack((W2seg_Plygn_ID, W2seg_Plygn_CLdist, W2seg_Plygn_Pt2_X, W2seg_Plygn_Pt2_Y))
+Polygon_Pts_C = np.column_stack((W2seg_Plygn_ID, W2seg_Plygn_CLdist, W2seg_Plygn_Pt3_X, W2seg_Plygn_Pt3_Y))
+Polygon_Pts_D = np.column_stack((W2seg_Plygn_ID, W2seg_Plygn_CLdist, W2seg_Plygn_Pt4_X, W2seg_Plygn_Pt4_Y))
+Polygon_Pts = np.concatenate((Polygon_Pts_A, Polygon_Pts_B, Polygon_Pts_C, Polygon_Pts_D), axis=0)
+
+#Create pandas data frame for transect end points
+df_polygon = pd.DataFrame(data=Polygon_Pts, columns=["W2segID", "CL_Distance", "Plygn_Xcoor", "Plygn_Ycoor"])
+
+#Zip the coordinates into a point object and convert to a geopanda data frame
+geometry = [Point(xy) for xy in zip(df_polygon.Plygn_Xcoor, df_polygon.Plygn_Ycoor)]
+geo_df_polygon_pts = gpd.GeoDataFrame(df_polygon, geometry=geometry)
+
+#Create geopanda data frame for transect lines
+geo_df_polygon = geo_df_polygon_pts.groupby(['W2segID'])['geometry'].apply(lambda x: Polygon(x.tolist()))
+geo_df_polygon = gpd.GeoDataFrame(geo_df_polygon, geometry='geometry', crs = CL_crs)
+
+#Export transect lines shape file
+pth_polygon = wrkDir + R"\TEMP_W2seg_Polygons.shp"
+geo_df_polygon.to_file(pth_polygon)
+
+
+
+
 
     
     
