@@ -7,15 +7,20 @@ Created on Wed Mar  3 12:39:13 2021
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Point, LineString, Polygon, shape
+from shapely.geometry import Point, LineString, Polygon
+
+##### Note: The user input centerline shape file must have a Coordinate Reference System (CRS)
+##### [also known as Spatial Reference System (SRS)] that is projected as opposed to geographic.
+##### Examples of a projected CRS are a state plane or Universal Transverse Mercator (UTM).
 
 
 #Number of CE-QUAL-W2 Segments (USER INPUT)
-Seg_No = 100
+Seg_No = 200
 
+#Cross Section Width
+Width = 1000  #(USER INPUT) [Units are the same as the projected CRS provided in the centerline shape file]
 
-
-#Import Shapefile Centerline (USER INPUT)
+#Import shape file centerline (USER INPUT)
 wrkDir = R"I:\2ERDC02 – WQ Model Enhancements FY2021\GIS\Data\LimnoTech"
 pth_CL = wrkDir + R"\NapaRiver_CL.shp"
 geo_df_CL = gpd.read_file(pth_CL)
@@ -138,68 +143,9 @@ for row in CLpts_W2seg_Dist:
         k = k + 1
 
 
-    
-
-######### The following was temporary code to read previously exported csv files from previously generated QGIS shapefiles ######### 
-
-#Read Input Files
-#filePath_CLpts_W2seg = R'I:/2ERDC02 – WQ Model Enhancements FY2021/GIS/Data/LimnoTech/2021_0303/TEMP_CL_pts_geom_2021_0303.csv'
-#CLpts_W2seg = np.genfromtxt(filePath_CLpts_W2seg, delimiter=',',skip_header=1)
-
-#filePath_CLpts_W2seg_bnd = R'I:/2ERDC02 – WQ Model Enhancements FY2021/GIS/Data/LimnoTech/2021_0303/TEMP_CL_sgmts_slctd_pts_geom_2021_0303.csv'
-#CLpts_W2seg_bnd = np.genfromtxt(filePath_CLpts_W2seg_bnd, delimiter=',',skip_header=1)
-
-
-#Retrieve Coordinate Information from Input Arrays
-#CLpts_W2seg_Dist = CLpts_W2seg[..., 5]
-#CLpts_W2seg_X = CLpts_W2seg[..., 7]
-#CLpts_W2seg_Y = CLpts_W2seg[..., 8]
-
-#CLpts_W2seg_bnd_X = CLpts_W2seg_bnd[..., 19]
-#CLpts_W2seg_bnd_Y = CLpts_W2seg_bnd[..., 20]
-
-#Reorganize X1 and X2 from Input Arrays
-#n = 0
-#odd_ct = 0
-#even_ct = 0
-
-#CLpts_W2seg_bnd_X1 = np.zeros((CLpts_W2seg_X.shape))
-#CLpts_W2seg_bnd_X2 = np.zeros((CLpts_W2seg_X.shape))
-
-#for row in CLpts_W2seg_bnd_X:
-#    n = n + 1
-#    if (n % 2) == 0:
-#        np.put(CLpts_W2seg_bnd_X2, [even_ct], [row])
-#        even_ct = even_ct + 1
-#    else:
-#        np.put(CLpts_W2seg_bnd_X1, [odd_ct], [row])
-#        odd_ct = odd_ct + 1
-
-
-#Reorganize Y1 and Y2 from Input Arrays
-#n = 0
-#odd_ct = 0
-#even_ct = 0
-
-#CLpts_W2seg_bnd_Y1 = np.zeros((CLpts_W2seg_Y.shape))
-#CLpts_W2seg_bnd_Y2 = np.zeros((CLpts_W2seg_Y.shape))
-
-#for row in CLpts_W2seg_bnd_Y:
-#    n = n + 1
-#    if (n % 2) == 0:
-#        np.put(CLpts_W2seg_bnd_Y2, [even_ct], [row])
-#        even_ct = even_ct + 1
-#    else:
-#        np.put(CLpts_W2seg_bnd_Y1, [odd_ct], [row])
-#        odd_ct = odd_ct + 1
-
-######### The previous was temporary code to read previously exported csv files from previously generated QGIS shapefiles  ######### 
-
-
 
 #Find End Points in the Transect
 n = 0
-Width = 1000  #(USER INPUT)
 D = Width/2
 
 CLpts_W2seg_m_seg = np.zeros((CLpts_W2seg_Y.shape))
@@ -227,12 +173,39 @@ for row in CLpts_W2seg_X:
     PtY2_pos = m * PtX2_pos + b
     PtY2_neg = m * PtX2_neg + b
     Width_Check = np.sqrt((PtX2_pos - PtX2_neg)**2 + (PtY2_pos - PtY2_neg)**2)
+    dx_seg = SegX2 - SegX1
+    dy_seg = SegY2 - SegY1
+    dx_Ptpos = PtX2_pos - PtX1
+    dy_Ptpos = PtY2_pos - PtY1
+    dx_Ptneg = PtX2_neg - PtX1
+    dy_Ptneg = PtY2_neg - PtY1    
+    crss_pos = (dx_seg * dy_Ptpos) - (dy_seg * dx_Ptpos)
+    crss_neg = (dx_seg * dy_Ptneg) - (dy_seg * dx_Ptneg)
+    crss_pos_sgn = np.sign(crss_pos)
+    crss_neg_sgn = np.sign(crss_neg)
+    
+    if crss_pos_sgn == 1:
+        PtX2_pos_crss = PtX2_pos
+    else: PtX2_neg_crss = PtX2_pos
+    
+    if crss_pos_sgn == 1:
+        PtY2_pos_crss = PtY2_pos
+    else: PtY2_neg_crss = PtY2_pos    
+    
+    if crss_neg_sgn == 1:
+        PtX2_pos_crss = PtX2_neg
+    else: PtX2_neg_crss = PtX2_neg   
+    
+    if crss_neg_sgn == 1:
+        PtY2_pos_crss = PtY2_neg
+    else: PtY2_neg_crss = PtY2_neg    
+    
     np.put(CLpts_W2seg_m_seg, [n], [m_seg])
     np.put(CLpts_W2seg_m, [n], [m])
-    np.put(CLpts_W2seg_PtX2_pos, [n], [PtX2_pos])
-    np.put(CLpts_W2seg_PtY2_pos, [n], [PtY2_pos])
-    np.put(CLpts_W2seg_PtX2_neg, [n], [PtX2_neg])
-    np.put(CLpts_W2seg_PtY2_neg, [n], [PtY2_neg])
+    np.put(CLpts_W2seg_PtX2_pos, [n], [PtX2_pos_crss])
+    np.put(CLpts_W2seg_PtY2_pos, [n], [PtY2_pos_crss])
+    np.put(CLpts_W2seg_PtX2_neg, [n], [PtX2_neg_crss])
+    np.put(CLpts_W2seg_PtY2_neg, [n], [PtY2_neg_crss])
     np.put(Width_Check_array, [n], [Width_Check])
     n = n + 1
 
@@ -258,9 +231,9 @@ pth_transectLines = wrkDir + R"\TEMP_CL_Transect_Lines.shp"
 geo_df_transect_lines.to_file(pth_transectLines)
 
 
-###### Some polygons are not being drawn correctly...needs work...JMR 3/9/2021 ######
+
 #Create and populate CE-QUAL-W2 polygons point arrays
-n = 1 #starting for loop at second record of the "CLpts_W2seg_Pts#2_***" arrays to facilitate calling previous transect points
+n = 1 #starting "for loop" at second record of the "CLpts_W2seg_Pts#2_***" arrays to facilitate calling previous transect points
 CLpts_W2segPlygn_shape = (Seg_No, 1)
 W2seg_Plygn_Pt1_X = np.zeros((CLpts_W2segPlygn_shape))
 W2seg_Plygn_Pt2_X = np.zeros((CLpts_W2segPlygn_shape))
@@ -319,10 +292,6 @@ geo_df_polygon = gpd.GeoDataFrame(geo_df_polygon, geometry='geometry', crs = CL_
 #Export transect lines shape file
 pth_polygon = wrkDir + R"\TEMP_W2seg_Polygons.shp"
 geo_df_polygon.to_file(pth_polygon)
-
-
-
-
 
     
     
