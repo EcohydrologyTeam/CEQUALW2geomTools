@@ -1,8 +1,8 @@
 CE-QUAL-W2 Preliminary Segmentation Notebook Example
 ====
 
-Jupyter notebooks that creates a preliminary W2 segmentation from a centerline shape file.
-The current notebook is: JNB_transect_and_polygons_Checks.ipynb
+Jupyter notebook that creates a preliminary W2 segmentation from a centerline shape file.
+The current notebook is: [JNB_transect_and_polygons_Checks.ipynb](CEQUALW2geomTools/JNB_transect_and_polygons_Checks.ipynb)
 
 
 ## Create Conda Environment for W2 Notebooks
