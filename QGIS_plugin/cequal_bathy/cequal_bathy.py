@@ -35,6 +35,7 @@ import os.path
 from .create_poly import createPolygon_func
 from .convex_check import convexCheck_func
 from .centerline_check import centerlineCheck_func
+from .symbology_check import symbologyCheck_func
 
 from qgis.core import *
 
@@ -45,6 +46,7 @@ class CEQUAL_Bathy:
     createPolygon_btn = createPolygon_func
     convexCheck = convexCheck_func
     centerlineCheck = centerlineCheck_func
+    symbologyCheck = symbologyCheck_func
 
     def __init__(self, iface):
         """Constructor.

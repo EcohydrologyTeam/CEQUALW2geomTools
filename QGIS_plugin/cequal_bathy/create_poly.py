@@ -110,3 +110,9 @@ def createPolygon_func(self, selectedLayer, seg_ct, transectWidth):
     transectLayer = QgsProject.instance().mapLayersByName('Transects')[0]
     centerlineLayer = selectedLayer
     self.centerlineCheck(segmentLayer, transectLayer, centerlineLayer)
+
+    #run symbology check function
+    segmentLayer = QgsProject.instance().mapLayersByName('Segments')[0]
+    transectLayer = QgsProject.instance().mapLayersByName('Transects')[0]
+    centerlineLayer = selectedLayer
+    self.symbologyCheck(segmentLayer, transectLayer, centerlineLayer)
