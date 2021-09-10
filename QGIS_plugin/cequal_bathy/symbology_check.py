@@ -9,12 +9,12 @@ def symbologyCheck_func(self, segmentLayer, transectLayer, centerlineLayer):
 
 
     #Display Symbology for existing Centerline Layer
-    for lyr in QgsProject.instance().mapLayers().values():
-        if lyr.name() == "Centerline":
-            QgsProject.instance().removeMapLayers([lyr.id()])
     centerlineLayer.selectAll()
     clone_centerlineLayer = processing.run("native:saveselectedfeatures", {'INPUT': centerlineLayer, 'OUTPUT': 'memory:'})['OUTPUT']
     centerlineLayer.removeSelection()
+    for lyr in QgsProject.instance().mapLayers().values():
+        if lyr.name() == "Centerline":
+            QgsProject.instance().removeMapLayers([lyr.id()])
     clone_centerlineLayer.setName("Centerline")
     symbol_CL = QgsSymbol.defaultSymbol(clone_centerlineLayer.geometryType())
     symbol_CL.setWidth(1)
@@ -52,6 +52,11 @@ def symbologyCheck_func(self, segmentLayer, transectLayer, centerlineLayer):
         'INPUT': segmentLayer,
         'OUTPUT': 'TEMPORARY_OUTPUT'}
     result_Segments = processing.run("native:fieldcalculator", params)
+    result_layer_Segments = result_Segments['OUTPUT']
+    
+    #remove extra fields
+    params={ 'FIELDS' : ['order_id', 'SEGMENT', 'Is_Cnx_CL_In'], 'INPUT' : result_layer_Segments, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+    result_Segments = processing.run("native:retainfields", params)
     result_layer_Segments = result_Segments['OUTPUT']
 
     #Remove existing Segments Layer and

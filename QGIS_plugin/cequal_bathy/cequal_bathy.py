@@ -30,12 +30,13 @@ from .resources import *
 # Import the code for the dialog
 from .cequal_bathy_dialog import CEQUAL_BathyDialog
 from .create_poly_dialog import Create_polyDialog
-from .merge_poly_dialog import Merge_polyDialog
 import os.path
 from .create_poly import createPolygon_func
 from .convex_check import convexCheck_func
 from .centerline_check import centerlineCheck_func
 from .symbology_check import symbologyCheck_func
+from .split_poly import splitPolygon_func
+from .merge_poly import mergePolygon_func
 
 from qgis.core import *
 
@@ -47,6 +48,9 @@ class CEQUAL_Bathy:
     convexCheck = convexCheck_func
     centerlineCheck = centerlineCheck_func
     symbologyCheck = symbologyCheck_func
+    
+    splitPolygon_btn = splitPolygon_func
+    mergePolygon_btn = mergePolygon_func
 
     def __init__(self, iface):
         """Constructor.
@@ -77,7 +81,6 @@ class CEQUAL_Bathy:
         self.menu = self.tr(u'&CE QUAL W2 Bathymetry PreProcessor')
 
         self.dlgCreate = Create_polyDialog()
-        self.dlgMerge = Merge_polyDialog()
         
         
         # Check if plugin was started the first time in current QGIS session
@@ -264,153 +267,30 @@ class CEQUAL_Bathy:
         self.dlgCreate.pushButton.clicked.connect(lambda: self.createPolygon_btn(selectedLayer, self.dlgCreate.spinBox.value(), self.dlgCreate.doubleSpinBox.value()))
 
 
-
-
-
-
     def doSplitPoly(self):
-        #TODO:  UI to specify centerline, width
 
         import processing
         root = QgsProject.instance().layerTreeRoot()
 
-        #segment width
-        seg_w=150
+        #transect width
+        transectWidth = float(self.dlgCreate.doubleSpinBox.value())
+        print(transectWidth)
 
-        #get active layer
-        iface = self.iface
-        alyr=iface.activeLayer()
-
-        #TODO Dissolve river centerline to ensure one line segment
-
-        #extract river centerline segment overlapping selected polygon
-        params={ 'INPUT' : 'G:/2ERDC02/GIS/Demo_Files_31Mar2021/NapaRiver_CL.shp', 'OUTPUT' : 'TEMPORARY_OUTPUT', 'OVERLAY' : QgsProcessingFeatureSourceDefinition(alyr.id(), True) }
-        result_cl = processing.run("native:clip", params)
-        result_layer_cl = result_cl['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_cl)
-
-        #Get length and mid point of selected segment
-        params = { 'CALC_METHOD' : 0, 'INPUT' : result_layer_cl, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_len = processing.run("qgis:exportaddgeometrycolumns", params)
-        result_layer1 = result_len['OUTPUT']
-        len=0
-        for feature in result_layer1.getFeatures():
-            len += feature["length"]
-        mid=len/2
-
-        #Get points with angle
-        params = { 'DISTANCE' : mid, 'END_OFFSET' : 0, 'INPUT' : result_layer_cl, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'START_OFFSET' : 0 }
-        result_pts = processing.run("native:pointsalonglines", params)
-        result_layer_pts = result_pts['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_pts)
-
-        #select only midpoint
-        params={ 'INPUT' : result_layer_pts, 'INTERSECT' : QgsProcessingFeatureSourceDefinition(alyr.id(), True), 'OUTPUT' : 'TEMPORARY_OUTPUT', 'PREDICATE' : [6] }
-        result_pts1 = processing.run("native:extractbylocation", params)
-        result_layer_pts1 = result_pts1['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_pts1)
-
-        #get id of segment to be split
-        params={ 'DISCARD_NONMATCHING' : False, 'INPUT' : result_layer_pts1, 'JOIN' : QgsProcessingFeatureSourceDefinition(alyr.id(), False), 'JOIN_FIELDS' : ['order_id'], 'METHOD' : 2, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'PREDICATE' : [0,1,5], 'PREFIX' : '' }
-        result_pts2 = processing.run("native:joinattributesbylocation", params)
-        result_layer_pts2 = result_pts2['OUTPUT']
-        #adjust order_id
-        params={ 'FIELD_LENGTH' : 0, 'FIELD_NAME' : 'order_id', 'FIELD_PRECISION' : 0, 'FIELD_TYPE' : 1, 'FORMULA' : ' \"order_id\" +1', 'INPUT' : result_layer_pts2, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_pts3 = processing.run("native:fieldcalculator", params)
-        result_layer_pts3 = result_pts3['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_pts3)
-        for feature in result_layer_pts3.getFeatures():
-            seg_id = feature["order_id"]
-
-
-        #intersect lines and existing polygons
-        params={ 'INPUT' : 'G:/2ERDC02/GIS/Demo_Files_31Mar2021/NapaRiver_CL.shp', 'INPUT_FIELDS' : [], 'OUTPUT' : 'TEMPORARY_OUTPUT', 'OVERLAY' : QgsProcessingFeatureSourceDefinition(alyr.id(), False), 'OVERLAY_FIELDS' : [], 'OVERLAY_FIELDS_PREFIX' : '' }
-        result_int = processing.run("native:intersection", params)
-        result_layer_int = result_int['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_int)
-
-        #extract vertices
-        params={ 'INPUT' : result_layer_int, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'VERTICES' : '0' }
-        result_vert = processing.run("native:extractspecificvertices", params)
-        result_layer_vert = result_vert['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_vert)
-
-        #adjust order_id
-        params={ 'FIELD_LENGTH' : 0, 'FIELD_NAME' : 'order_id', 'FIELD_PRECISION' : 0, 'FIELD_TYPE' : 1, 'FORMULA' : 'case \r\nwhen \"order_id\" >= ' +str(seg_id) + 'then \"order_id\" +1\r\nelse \"order_id\" \r\nend', 'INPUT' : result_layer_vert, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_vert = processing.run("native:fieldcalculator", params)
-        result_layer_vert = result_vert['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_vert)
-
-
-        #add new point to existing points
-        params={ 'CRS' : None, 'LAYERS' : [result_layer_vert,result_layer_pts3], 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_mpts = processing.run("native:mergevectorlayers", params)
-        result_layer_mpts = result_mpts['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_mpts)
-
-        #Extend and rotate lines
-        params ={ 'EXPRESSION' : 'extend(\r\n make_line(\r\n $geometry,\r\n project (\r\n $geometry, \r\n 150, \r\n radians(\"angle\"-90))\r\n ),\r\n 150,\r\n 0\r\n)', 'INPUT' : result_layer_mpts, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'OUTPUT_GEOMETRY' : 1, 'WITH_M' : False, 'WITH_Z' : False }
-        result_rot = processing.run("native:geometrybyexpression", params)
-        result_layer_rot = result_rot['OUTPUT']
-        #remove existing Transects Layer
-        for lyr in QgsProject.instance().mapLayers().values():
-            if lyr.name() == "Transects":
-                QgsProject.instance().removeMapLayers([lyr.id()])
-        result_layer_rot.setName("Transects")
-        QgsProject.instance().addMapLayer(result_layer_rot)
-
-        #Get starting points
-        params = { 'INPUT' : result_layer_rot, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'VERTICES' : '0' }
-        result_sp = processing.run("native:extractspecificvertices", params)
-        result_layer_sp = result_sp['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_sp)
-
-        #Get end points
-        params = { 'INPUT' : result_layer_rot, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'VERTICES' : '-1' }
-        result_ep = processing.run("native:extractspecificvertices", params)
-        result_layer_ep = result_ep['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_ep)
-
-        #connect paths
-        params = { 'CLOSE_PATH' : False, 'GROUP_EXPRESSION' : '', 'INPUT' : result_layer_sp, 'NATURAL_SORT' : False, 'ORDER_EXPRESSION' : '\"order_id\"', 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_p1 = processing.run("native:pointstopath", params)
-        result_layer_p1 = result_p1['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_p1)
-
-        params = { 'CLOSE_PATH' : False, 'GROUP_EXPRESSION' : '', 'INPUT' : result_layer_ep, 'NATURAL_SORT' : False, 'ORDER_EXPRESSION' : '\"order_id\"', 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_p2 = processing.run("native:pointstopath", params)
-        result_layer_p2 = result_p2['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_p2)
-
-        #merge paths
-        params={ 'CRS' : None, 'LAYERS' : [result_layer_rot,result_layer_p1,result_layer_p2], 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_lines = processing.run("native:mergevectorlayers", params)
-        result_layer_lines = result_lines['OUTPUT']
-        #QgsProject.instance().addMapLayer(result_layer_lines)
-
-        #polygonize
-        { 'INPUT' : result_layer_lines, 'KEEP_FIELDS' : True, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        params={ 'INPUT' : result_layer_lines, 'KEEP_FIELDS' : True, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        result_poly = processing.run("native:polygonize", params)
-        result_layer_poly = result_poly['OUTPUT']
-
-        #get new order_ids
-
-        for lyr in QgsProject.instance().mapLayers().values():
-            if lyr.name() == "Segments":
-                QgsProject.instance().removeMapLayers([lyr.id()])
-        result_layer_poly.setName("Segments")
-        QgsProject.instance().addMapLayer(result_layer_poly)
-
-
-
-
-
+        #Run the create polygon routine by clicking the button
+        self.splitPolygon_btn(transectWidth)
 
         
     def doMergePoly(self):
-        # slot for action
-        self.dlgMerge.show()
+
+        import processing
+        root = QgsProject.instance().layerTreeRoot()
+
+        #transect width
+        transectWidth = float(self.dlgCreate.doubleSpinBox.value())
+        print(transectWidth)
+
+        #Run the create polygon routine by clicking the button
+        self.mergePolygon_btn(transectWidth)
         
     def run(self):
         """Run method that performs all the real work"""

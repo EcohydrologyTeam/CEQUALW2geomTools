@@ -106,29 +106,31 @@ def centerlineCheck_func(self, segmentLayer, transectLayer, centerlineLayer):
     result_layer_Segments_joined_chck = result_Segments_joined_chck['OUTPUT']
 
     #Remove unwanted fields
-    params = {
-        'INPUT': result_layer_Segments_joined_chck,
-        'COLUMN': ["splt_Name",
-                   "splt_sgmt_order_id",
-                   "splt_sgmt_IsConvex",
-                   "splt_length",
-                   "order_id_2",
-                   "IsConvex_2",
-                   "spltInt_Name",
-                   "spltInt_sgmt_order_id",
-                   "spltInt_sgmt_IsConvex",
-                   "spltInt_order_id",
-                   "spltInt_IsConvex",
-                   "spltInt_length"],
-        'OUTPUT': 'TEMPORARY_OUTPUT'}
-    result_Segments_joined_chck_rmv = processing.run("qgis:deletecolumn", params)
-    result_layer_Segments_joined_chck_rmv = result_Segments_joined_chck_rmv['OUTPUT']
+    # params = {
+        # 'INPUT': result_layer_Segments_joined_chck,
+        # 'COLUMN': ["splt_Name",
+                   # "splt_sgmt_order_id",
+                   # "splt_sgmt_IsConvex",
+                   # "splt_length",
+                   # "order_id_2",
+                   # "IsConvex_2",
+                   # "spltInt_Name",
+                   # "spltInt_sgmt_order_id",
+                   # "spltInt_sgmt_IsConvex",
+                   # "spltInt_order_id",
+                   # "spltInt_IsConvex",
+                   # "spltInt_length"],
+        # 'OUTPUT': 'TEMPORARY_OUTPUT'}
+    # result_Segments_joined_chck_rmv = processing.run("qgis:deletecolumn", params)
+    # result_layer_Segments_joined_chck_rmv = result_Segments_joined_chck_rmv['OUTPUT']
 
     #Remove existing Segments Layer and Add Updated Segment Layer with Centerline Check Attribute
     for lyr in QgsProject.instance().mapLayers().values():
         if lyr.name() == "Segments":
             QgsProject.instance().removeMapLayers([lyr.id()])
-    result_layer_Segments_joined_chck_rmv.setName("Segments")
-    QgsProject.instance().addMapLayer(result_layer_Segments_joined_chck_rmv)
+    #result_layer_Segments_joined_chck_rmv.setName("Segments")
+    #QgsProject.instance().addMapLayer(result_layer_Segments_joined_chck_rmv)
+    result_layer_Segments_joined_chck.setName("Segments")
+    QgsProject.instance().addMapLayer(result_layer_Segments_joined_chck)
 
 
