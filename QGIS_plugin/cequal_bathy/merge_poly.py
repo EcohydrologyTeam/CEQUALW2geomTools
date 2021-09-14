@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from qgis.core import QgsProject
 from qgis.core import QgsProcessingFeatureSourceDefinition
+from qgis.core import QgsProperty
 
 def mergePolygon_func(self, transectWidth):
 
@@ -138,9 +139,30 @@ def mergePolygon_func(self, transectWidth):
     QgsProject.instance().addMapLayer(result_layer_poly)
 
     #Create centerline layer
-    params={ 'INPUT' : cl_lyr, 'INPUT_FIELDS' : [], 'OUTPUT' : 'TEMPORARY_OUTPUT', 'OVERLAY' : result_layer_poly, 'OVERLAY_FIELDS' : [], 'OVERLAY_FIELDS_PREFIX' : '' }
-    result_cl = processing.run("native:intersection", params)
-    result_layer_cl = result_cl['OUTPUT']
+    #split centerline by transects
+    params={ 'INPUT' : cl_lyr, 'LINES' : result_layer_rot, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+    result_cl_seg = processing.run("native:splitwithlines", params)
+    result_layer_cl_seg = result_cl_seg['OUTPUT']
+    
+    #add length field
+    params={ 'CALC_METHOD' : 0, 'INPUT' : result_layer_cl_seg, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+    result_cl_seg = processing.run("qgis:exportaddgeometrycolumns", params)
+    result_layer_cl_seg = result_cl_seg['OUTPUT']
+    
+    #remove artifact segments
+    params={ 'EXPRESSION' : ' \"length\" >0.1', 'INPUT' : result_layer_cl_seg, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+    result_cl_seg = processing.run("native:extractbyexpression", params)
+    result_layer_cl_seg = result_cl_seg['OUTPUT']
+
+    #match segments
+    params={ 'DISCARD_NONMATCHING' : True, 'INPUT' : result_layer_cl_seg, 'JOIN' : result_layer_poly, 'JOIN_FIELDS' : [], 'METHOD' : 2, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'PREDICATE' : [0], 'PREFIX' : '' }
+    result_cl_seg3 = processing.run("native:joinattributesbylocation", params)
+    result_layer_cl_seg3 = result_cl_seg3['OUTPUT']
+    
+    #fix geometry
+    params={ 'INPUT' : result_layer_cl_seg3, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+    result_cl_seg = processing.run("native:fixgeometries", params)
+    result_layer_cl = result_cl_seg['OUTPUT']
 
     #add required fields to CL
     params={ 'FIELD_LENGTH' : 10, 'FIELD_NAME' : 'ELWS', 'FIELD_PRECISION' : 4, 'FIELD_TYPE' : 1, 'INPUT' : result_layer_cl, 'OUTPUT' : 'TEMPORARY_OUTPUT' }
