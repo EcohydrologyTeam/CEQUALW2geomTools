@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from qgis.core import QgsProject
 from qgis.core import QgsProperty
+#from qgis.core import QCoreApplication
 
 def createPolygon_func(self, selectedLayer, seg_ct, transectWidth):
     import processing
@@ -11,6 +12,18 @@ def createPolygon_func(self, selectedLayer, seg_ct, transectWidth):
     #get active layer
     iface = self.iface
     alyr=iface.activeLayer()
+    
+    #remove old layers
+    for lyr in QgsProject.instance().mapLayers().values():
+        if lyr.name() == "Transects":
+            transect_lyr=QgsProject.instance().mapLayersByName("Transects")[0]
+            QgsProject.instance().removeMapLayers([transect_lyr.id()])
+        elif lyr.name() == "Segments":
+            seg_lyr=QgsProject.instance().mapLayersByName("Segments")[0]
+            QgsProject.instance().removeMapLayers([seg_lyr.id()])
+        elif lyr.name() == "Centerline":
+            cl_lyr=QgsProject.instance().mapLayersByName("Centerline")[0]
+            QgsProject.instance().removeMapLayers([cl_lyr.id()])
 
     #Get length of river centerline
     #params = { 'CALC_METHOD' : 0, 'INPUT' : QgsProcessingFeatureSourceDefinition('G:/2ERDC02/GIS/Demo_Files_31Mar2021/NapaRiver_CL.shp'), 'OUTPUT' : 'TEMPORARY_OUTPUT' }

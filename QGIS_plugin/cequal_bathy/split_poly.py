@@ -14,6 +14,7 @@ def splitPolygon_func(self, transectWidth):
     root = QgsProject.instance().layerTreeRoot()
 
     cl_lyr=QgsProject.instance().mapLayersByName("Centerline")[0]
+    #cl_lyr=selectedLayer
     transect_lyr=QgsProject.instance().mapLayersByName("Transects")[0]
     seg_lyr=QgsProject.instance().mapLayersByName("Segments")[0]
 
@@ -41,7 +42,7 @@ def splitPolygon_func(self, transectWidth):
     result_layer_cl_seg = result_cl_seg['OUTPUT']
     
     #clip segments to ensure proper join
-    params={ 'END_DISTANCE' : QgsProperty.fromExpression('"length"*0.9999'), 'INPUT' : result_layer_cl_seg, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'START_DISTANCE' : QgsProperty.fromExpression('"length"*0.0001') }
+    params={ 'END_DISTANCE' : QgsProperty.fromExpression('"length"*0.999999'), 'INPUT' : result_layer_cl_seg, 'OUTPUT' : 'TEMPORARY_OUTPUT', 'START_DISTANCE' : QgsProperty.fromExpression('"length"*0.000001') }
     result_cl_seg = processing.run("native:linesubstring", params)
     result_layer_cl_seg = result_cl_seg['OUTPUT']
 
@@ -55,6 +56,7 @@ def splitPolygon_func(self, transectWidth):
     params={ 'INPUT' : cl_lyr, 'INPUT_FIELDS' : [], 'INTERSECT' : transect_lyr, 'INTERSECT_FIELDS' : [], 'INTERSECT_FIELDS_PREFIX' : '', 'OUTPUT' : 'TEMPORARY_OUTPUT' }
     result_tpt = processing.run("native:lineintersections", params)
     result_layer_tpt = result_tpt['OUTPUT']
+    #QgsProject.instance().addMapLayer(result_layer_tpt)
 
     #add mid points for selected cl segments
     for feature in result_layer_cl_seg.getFeatures():
