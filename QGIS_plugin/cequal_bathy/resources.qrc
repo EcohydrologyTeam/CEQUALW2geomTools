@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/plugins/cequal_bathy" >
+        <file>icon.png</file>
+        <file>icon1.png</file>
+        <file>create_icon.png</file>
+        <file>split_icon.png</file>
+        <file>merge_icon.png</file>
+        <file>river_icon.png</file>
+    </qresource>
+</RCC>
